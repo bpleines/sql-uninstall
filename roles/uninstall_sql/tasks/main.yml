@@ -34,17 +34,16 @@
   with_items:
     - '{{ programs.stdout|program_list }}'
 
-- name: Remove the sqlaccounts from all associated security policies
-  win_user_right:
-    name: '{{ item }}'
-    users: '{{ SQL_DOMAIN_ACCOUNTS }}'
-    action: remove
-  register: sqlaccounts
-  failed_when: '"not a valid account" not in sqlaccounts.msg'
-  #Accounts need to be provided in role defaults for this part to be meaningful
-  ignore_errors: true
-  with_items:
-    - '{{ SQL_POLICIES }}'
+#SQL_DOMAIN_ACCOUNTS must be added in defaults/main.yml for this task to be relevant
+#- name: Remove the sqlaccounts from all associated security policies
+#  win_user_right:
+#    name: '{{ item }}'
+#    users: '{{ SQL_DOMAIN_ACCOUNTS }}'
+#    action: remove
+#  register: sqlaccounts
+#  failed_when: '"not a valid account" not in sqlaccounts.msg'
+#  with_items:
+#    - '{{ SQL_POLICIES }}'
 
 - name: Find all local accounts in Administrators Group
   win_shell: net localgroup administrators
