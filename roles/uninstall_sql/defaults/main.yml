@@ -1,0 +1,14 @@
+---
+#Thse will be installation dependent
+#SQL_DOMAIN_ACCOUNTS:
+#  - '<DOMAIN>\<ACCOUNT>'
+
+SQL_POLICIES:  
+  - 'SeTcbPrivilege'
+  - 'SeIncreaseQuotaPrivilege'
+  - 'SeChangeNotifyPrivilege'
+  - 'SeLockMemoryPrivilege'
+  - 'SeBatchLogonRight'
+  - 'SeServiceLogonRight'
+  - 'SeManageVolumePrivilege'
+  - 'SeAssignPrimaryTokenPrivilege'

@@ -1,0 +1,14 @@
+---
+#Playbook to automate the uninstallation of SQL
+- name: An automated uninstall of SQL Components required for a reinstallation
+  hosts: sql_server
+
+  #Pass 5x - This can be increased if required - pass doesn't mean anything just a tag
+  #The play ends early if SQL is already uninstalled
+  roles:
+    - { role: uninstall_sql, pass: 1 }
+    - { role: uninstall_sql, pass: 2 }
+    - { role: uninstall_sql, pass: 3 }
+    - { role: uninstall_sql, pass: 4 }
+    - { role: uninstall_sql, pass: 5 }
+...

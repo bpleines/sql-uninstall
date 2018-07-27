@@ -1,0 +1,110 @@
+---
+- name: Find the SQL services
+  win_shell: Get-Service '*SQL*' | Format-List -Property Name
+  register: services
+  changed_when: false
+
+- name: Stop all SQL Services
+  win_service:
+    name: '{{ item }}'
+    state: stopped
+    force_dependent_services: true
+  with_items:
+    - '{{ services.stdout|service_list }}'
+
+- name: Find the SQL Programs
+  win_shell: 'Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like "*SQL*" } | Format-List -Property Name'
+  register: programs
+  changed_when: false
+
+- name: If no programs are left, end the play as SQL is uninstalled
+  meta: end_play
+  when: programs.stdout == ""
+
+- name: Log the SQL Programs to be uninstalled
+  debug: 
+    msg: '{{ item }}'
+  with_items:
+    - '{{ programs.stdout|program_list }}'
+
+- name: Uninstall the targeted Windows programs 
+  win_shell: '$app = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like "{{ item }}" } ; $app.Uninstall()'
+  register: uninstalled_programs
+  ignore_errors: true
+  with_items:
+    - '{{ programs.stdout|program_list }}'
+
+- name: Remove the sqlaccounts from all associated security policies
+  win_user_right:
+    name: '{{ item }}'
+    users: '{{ SQL_DOMAIN_ACCOUNTS }}'
+    action: remove
+  register: sqlaccounts
+  failed_when: '"not a valid account" not in sqlaccounts.msg'
+  #Accounts need to be provided in role defaults for this part to be meaningful
+  ignore_errors: true
+  with_items:
+    - '{{ SQL_POLICIES }}'
+
+- name: Find all local accounts in Administrators Group
+  win_shell: net localgroup administrators
+  register: local_admins
+  changed_when: false
+
+- name: Debug the local accounts to be removed
+  debug:
+    msg: '{{ item }}'
+  with_items:
+    - '{{ local_admins.stdout|admin_list }}'
+
+#These drive directories are also likely dependent on the installation
+- name: Statically erase identified files in W, X, Y Z drives
+  win_file:
+    path: '{{ item }}'
+    state: absent
+  with_items:
+    - 'W:\SQLSYSDB'
+    - 'W:\Program Files'
+    - 'X:\SQLData'
+    - 'X:\Program Files'
+    - 'Y:\SQLLogs'
+    - 'Y:\Program Files'
+    - 'Z:\TEMPDATA'
+    - 'Z:\Program Files'  
+
+- name: Remove Windows registry keys
+  win_regedit:
+    key: '{{ item }}'
+    state: absent
+    delete_key: yes
+  with_items:
+    - 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server'
+    - 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server 2012 Redist'
+    - 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server 2014 Redist'
+    - 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server Native Client 11.0'
+
+- name: "Reboot before trying to remove the directory"
+  win_reboot:
+    shutdown_timeout_sec: 3600
+    reboot_timeout_sec: 3600
+
+- name: Clear out Microsoft SQL Server files under Program files in C and D
+  win_file:
+    path: '{{ item }}:\Program Files\Microsoft SQL Server'
+    state: absent
+  #C:\\Program Files\\Microsoft SQL Server\\110\\Shared\\instapi110.dll: Access to the path 'C:\\Program Files\\Microsoft SQL Server\\110\\Shared\\instapi110.dll' is denied."
+  #This ^ error was resolved by first rebooting the server before trying to remove this directory
+  ignore_errors: true
+  with_items:
+    - 'D'
+    - 'C'
+
+- name: Clear out Microsoft SQL Server files under Program files (x86) in C and D
+  win_file:
+    path: '{{ item }}:\Program Files (x86)\Microsoft SQL Server'
+    state: absent
+  ignore_errors: true
+  with_items:
+    - 'D'
+    - 'C'
+...
